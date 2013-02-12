@@ -13,14 +13,14 @@ function Breakout() {
 	this.slider 		= null;
 }
 
-/*- Inheriting from Game -*/
-extend(Breakout, Game);
+
 
 /**
  * Breakout class prototype.
  */
 Breakout.prototype = (function () {
-	var prototype = Breakout.prototype;
+	/*- Inheriting from Game -*/
+	var prototype = extend(Breakout, Game);;
 	
 	/*--- Constants ---*/
 	
@@ -28,6 +28,7 @@ Breakout.prototype = (function () {
 		BALL_BORDER_COLOR 		= "#000000",
 		BALL_RADIUS				= 10,
 		BALL_SPEED				= 6,
+		BALL_MAX_X_SPEED		= 4,
 		
 		SLIDER_BODY_COLOR 		= "#6176FF",
 		SLIDER_BORDER_COLOR 	= "#aadd00",
@@ -36,8 +37,7 @@ Breakout.prototype = (function () {
 		SLIDER_SPEED			= 10,
 		SLIDER_MARGIN_BOTTOM 	= 25,
 		SLIDER_LATERAL_MARGIN	= 1,
-		SLIDER_FRICTION			= 0.1,
-		SLIDER_MAX_X_SPEED		= 0.7,
+		SLIDER_FRICTION			= 0.75,
 		
 		BRICKS_BODY_COLOR 		= "#ffff00",
 		BRICKS_BORDER_COLOR		= "#0FF0F0",
@@ -69,49 +69,33 @@ Breakout.prototype = (function () {
 			var slider 				= game.slider,
 				bricksList 			= game.bricksList,
 				ball 				= this,
-				ballTop 			= ball.y - ball.radius,
-				ballRight 			= ball.x + ball.radius,
-				ballBottom 			= ball.y + ball.radius,
-				ballLeft 			= ball.x - ball.radius,
-				ballGoingUp 		= ball.dy < 0,
-				ballGoingDown 		= ball.dy > 0,
-				ballGoingLeft 		= ball.dx < 0,
-				ballGoingRight 		= ball.dx > 0,
-				sliderTop 			= slider.y,
-				sliderRight 		= slider.x + slider.width,
-				sliderBottom 		= slider.y + slider.height,
-				sliderLeft 			= slider.x,
-				sliderGoingRight 	= slider.dx > 0,
-				sliderGoingLeft 	= slider.dx < 0;
-				
-			ball.x += ball.dx * ball.speed;
-			ball.y += ball.dy * ball.speed;
+				ballSpeed			= ball.getSpeed(),
+				ballPosition		= ball.getPosition();
+
+			/*- Updating balls position adding speed vector -*/
+			ballPosition.add(ball.speed);
 			
 			/*- Checking bricks collisions -*/
 			var newBricksList = [];
 			for (var i in bricksList) {
 				var brick 						= bricksList[i],
-					brickTop 					= brick.y,
-					brickRight 					= brick.x + brick.width,
-					brickBottom 				= brick.y + brick.height,
-					brickLeft 					= brick.x,
-					ballBrickYBottomDistance 	= brickTop - ballBottom,
-					ballBrickYTopDistance 		= ballTop - brickBottom,
-					ballBrickXLeftDistance 		= brickLeft - ballRight,
-					ballBrickXRightDistance 	= ballLeft - brickRight;
+					ballBrickYBottomDistance 	= brick.getTop() - ball.getBottom(),
+					ballBrickYTopDistance 		= ball.getTop() - brick.getTop(),
+					ballBrickXLeftDistance 		= brick.getLeft() - ball.getRight(),
+					ballBrickXRightDistance 	= ball.getLeft() - brick.getRight();
 				
 				/*- Tracking where is the lowest brick -*/
-				lowestBrickY = Math.max(brickBottom, lowestBrickY);
+				lowestBrickY = Math.max(brick.getBottom(), lowestBrickY);
 					
 				/*- Checking if the ball hits the bottom of a brick when going up -*/
 				if (ballBrickYBottomDistance <= 0 && ballBrickYTopDistance <= 0 && ballBrickXLeftDistance <= 0 && ballBrickXRightDistance <= 0) {
 					game.delBody(brick);
-					if (ballGoingUp) {
-						ball.dy = Math.abs(ball.dy);
-					} else if (ballGoingRight) {
-						ball.dx = - 1 * Math.abs(ball.dx);
-					} else if (ballGoingLeft) {
-						ball.dx = Math.abs(ball.dx);
+					if (ball.goingUp()) {
+						ballSpeed.setY(Math.abs(ballSpeed.getY()));
+					} else if (ball.goingRight()) {
+						ballSpeed.setX(- 1 * Math.abs(ballSpeed.getX()));
+					} else if (ball.goingLeft()) {
+						ballSpeed.setX(Math.abs(ballSpeed.getX()));
 					}
 					/*- Increase points after hitting a brick -*/
 					increasePoints.call(game);
@@ -124,36 +108,41 @@ Breakout.prototype = (function () {
 		
 			if (
 					/*- Reverse the movement if it hits the right border -*/
-					(ballGoingRight && ballRight >= ball.canvas.width) ||
+					(ball.goingRight() && ball.getRight() >= ball.getCanvas().width) ||
 					/*- Reverse the movement if it hits the left border -*/
-					(ballGoingLeft && ballLeft <= 0)
+					(ball.goingLeft() && ball.getLeft() <= 0)
 				) {
-					ball.dx *= -1;
-			} else if (ballGoingUp && ballTop <= 0) {
+					ballSpeed.invertX();
+			} else if (ball.goingUp() && ball.getTop() <= 0) {
 				/*- Reverse the movement if it hits the top border -*/
-				ball.dy *= -1;
-			} else if (ballGoingDown && ballBottom >= sliderTop && ball.x >= sliderLeft && ball.x <= sliderRight) {
-				/*- Reverse the movement if it hits the top of the slider -*/
-				ball.dy *= -1;
-				if (sliderGoingRight) {
-					ball.dx += SLIDER_FRICTION;
-				}
-				if (sliderGoingLeft) {
-					ball.dx -= SLIDER_FRICTION;
-				}
-				if (Math.abs(ball.dx) > SLIDER_MAX_X_SPEED) {
-					ball.dx = SLIDER_MAX_X_SPEED;
-					if (ballGoingLeft) {
-						ball.dx *= -1;
+				ballSpeed.invertY();
+			} else {
+				if (ball.goingDown() && ball.getBottom() >= slider.getTop() && ballPosition.getX() >= slider.getLeft() && ballPosition.getX() <= slider.getRight()) {
+					/*- Reverse the movement if it hits the top of the slider -*/
+					ballSpeed.invertY();
+					var ballSpeedX;
+					if (slider.goingRight()) {
+						ballSpeedX = ballSpeed.getX() + SLIDER_FRICTION;
 					}
+					if (slider.goingLeft()) {
+						ballSpeedX = ballSpeed.getX() - SLIDER_FRICTION;
+					}
+					/*- Ensuring a maximum x speed -*/
+					if (Math.abs(ballSpeedX) > BALL_MAX_X_SPEED) {
+						ballSpeedX = BALL_MAX_X_SPEED;
+						if (ball.goingLeft()) {
+							ballSpeedX *= -1;
+						}
+					}
+					ballSpeed.setX(ballSpeedX);
+				} else if (ball.goingDown() && ball.getBottom() >= slider.getBottom()) {
+					/*--- Game over case ---*/
+					gameOver.call(game);
 				}
-			} else if (ballGoingDown && ballBottom >= sliderBottom) {
-				/*--- Game over case ---*/
-				gameOver.call(game);
 			}
 			
 			/*--- Go to the next level if there aren't more bricks ---*/
-			if (game.bricksList.length === 0 && ballTop > (lowestBrickY+20)) {
+			if (game.bricksList.length === 0 && ball.getTop() > lowestBrickY) {
 				nextLevel.call(game);
 			}
 		};
@@ -171,25 +160,30 @@ Breakout.prototype = (function () {
 	 * Slider movements and collisions logic.
 	 */
 	function sliderMovementsLogic() {
+		var speed = this.getSpeed(),
+			position = this.getPosition();
+			
+		var	speedXAbs = Math.abs(speed.getX()),
+			thereIsMovement = false;
 		/*- Checking slider controls -*/
 		if (!this.moveRight && this.moveLeft) {
-			this.dx = -1;
+			speed.setX(-1 * speedXAbs);
+			thereIsMovement = true;
 		} 
 		if (!this.moveLeft && this.moveRight) {
-			this.dx = 1;
+			speed.setX(speedXAbs);
+			thereIsMovement = true;
 		} 
-		if (!this.moveLeft && !this.moveRight){
-			this.dx = 0;
+		if ((position.getX() + this.getWidth() + SLIDER_LATERAL_MARGIN) >= this.getCanvas().width && this.goingRight()) {
+			position.setX(this.getCanvas().width - this.getWidth() - SLIDER_LATERAL_MARGIN);
 		}
-		if ((this.x + this.width + SLIDER_LATERAL_MARGIN) >= this.canvas.width && this.dx > 0) {
-			this.x = this.canvas.width - this.width - SLIDER_LATERAL_MARGIN;
-			this.dx = 0;
+		if ((position.getX() - SLIDER_LATERAL_MARGIN) <= 0 && this.goingLeft()) {
+			position.setX(SLIDER_LATERAL_MARGIN);
 		}
-		if ((this.x - SLIDER_LATERAL_MARGIN) <= 0 && this.dx < 0) {
-			this.x = SLIDER_LATERAL_MARGIN;
-			this.dx = 0;
+		if (thereIsMovement) {
+			/*- Updating position -*/
+			position.add(speed);
 		}
-		this.x += this.dx * this.speed;
 	}
 	
 	
@@ -213,27 +207,31 @@ Breakout.prototype = (function () {
 			bricksPerRow 	= BRICKS_PER_ROW + this.currentLevel,
 			bricksMargin 	= this.ball.radius, // Half of the ball's width.
 			brickWidth 		= (this.canvas.width - (bricksMargin * (bricksPerRow+1))) / bricksPerRow,
-			brickHeight 	= (this.canvas.height - (bricksMargin * (bricksRows+1))) / (4 * bricksPerRow);
+			brickHeight 	= (this.canvas.height - (bricksMargin * (bricksRows+1))) / (4 * bricksPerRow),
+			vector2DZero 		= new Vector2D(0, 0);
 		for (var i = 0; i < bricksRows; i++ ) {
 			for (var j = 0; j < bricksPerRow; j++) {
 				var brickX 	= bricksMargin + ((bricksMargin + brickWidth) * j),
 					brickY 	= bricksMargin + ((bricksMargin + brickHeight) * i),
-					brick 	= new Rectangle(this.canvas, brickX, brickY, BRICKS_BODY_COLOR, BRICKS_BORDER_COLOR, brickWidth, brickHeight);
+					brick 	= new Rectangle(this.canvas, new Vector2D(brickX, brickY), vector2DZero, brickWidth, brickHeight);
+					brick
+						.setBodyColor(BRICKS_BODY_COLOR)
+						.setBorderColor(BRICKS_BORDER_COLOR);
 				this.bricksList.push(brick);
 				this.addBody(brick);
 			}
 		}
 
 		/*- Apply size reduction after the first level only -*/
-		if (this.currentLevel > 0){
+		if (this.currentLevel > 0) {
 			/*- Setting ball size and speed -*/
-			this.ball.radius 	*= BALL_SIZE_EACH_LEVEL; // Reducing the size 10% each level.
+			this.ball.setRadius(this.ball.getRadius() * BALL_SIZE_EACH_LEVEL); // Reducing the size each level.
 			
 			/*- Setting slider size -*/
-			this.slider.width 	*= SLIDER_SIZE_EACH_LEVEL; // Reducing the size 10% each level.
-			this.slider.height 	*= SLIDER_SIZE_EACH_LEVEL; // Reducing the size 10% each level.
-			this.slider.speed 	*= SLIDER_SPEED_EACH_LEVEL; // Increasing slider speed 15% each level.
-			this.ball.speed 	*= BALL_SPEED_EACH_LEVEL; // Increasing ball speed 10% each level.
+			this.slider.setWidth(this.slider.getWidth() * SLIDER_SIZE_EACH_LEVEL); // Reducing the size each level.
+			this.slider.setHeight(this.slider.getHeight() * SLIDER_SIZE_EACH_LEVEL); // Reducing the size level.
+			this.slider.getSpeed().multiply(new Vector2D(SLIDER_SPEED_EACH_LEVEL, 1)); // Increasing slider X speed each level.
+			this.ball.getSpeed().multiply(new Vector2D(1, BALL_SPEED_EACH_LEVEL)); // Increasing ball Y speed each level.
 			
 			/*- Increasing points when passing a level -*/
 			this.points += POINTS_PER_LEVEL;
@@ -248,19 +246,20 @@ Breakout.prototype = (function () {
 	 */
 	function start() {
 		/*- Resting some game attributes -*/
+		this.resetAnimationQueue();
 		this.gameOver 		= false;
 		this.currentLevel 	= 0;
 		this.points			= 0;
 		this.bricksList 	= [];
-		this.resetAnimationQueue();
 		
 		/*--- Creating the slider ---*/
 		
 		var sliderX = (this.canvas.width - SLIDER_WIDTH) / 2,
 			sliderY = this.canvas.height - SLIDER_HEIGHT - SLIDER_MARGIN_BOTTOM,
-			slider = this.slider = new Rectangle(this.canvas, sliderX, sliderY, SLIDER_BODY_COLOR, SLIDER_BORDER_COLOR, SLIDER_WIDTH, SLIDER_HEIGHT);
-		
-		slider.speed = SLIDER_SPEED;
+			slider = this.slider = new Rectangle(this.canvas, new Vector2D(sliderX, sliderY), new Vector2D(SLIDER_SPEED, 0), SLIDER_WIDTH, SLIDER_HEIGHT);
+			slider
+				.setBodyColor(SLIDER_BODY_COLOR)
+				.setBorderColor(SLIDER_BORDER_COLOR);
 		
 		/*- Adding the slider to the animation queue -*/
 		this.addBody(slider);
@@ -272,22 +271,20 @@ Breakout.prototype = (function () {
 		
 		/*--- Creating ball ---*/
 		
-		var ballX 			= (this.canvas.width - BALL_RADIUS) / 2, // centered.
-			ballY			= (this.canvas.height - BALL_RADIUS) / 2, // centered.
-			ballDirectionX 	= -0.5 + Math.random();
-			/*- Making sure the direction isn't very perpendicular -*/
-			if (ballDirectionX > -0.2 && ballDirectionX < 0) {
-				ballDirectionX -= 0.2;
-			} else if (ballDirectionX > 0 && ballDirectionX < 0.2) {
-				ballDirectionX += 0.2;
-			}
-			ballDirectionY	= 1;
-			
-		var ball = this.ball = new Circle(this.canvas, ballX, ballY, BALL_BODY_COLOR, BALL_BORDER_COLOR, BALL_SPEED, BALL_RADIUS);
+		var ballX 			 	= (this.canvas.width - BALL_RADIUS) / 2, // centered.
+			ballY				= (this.canvas.height - BALL_RADIUS) / 2, // centered.
+			ballMaxSpeedXHalf 	= BALL_MAX_X_SPEED / 2,
+			ballSpeedX 			= -ballMaxSpeedXHalf + Math.random() * BALL_MAX_X_SPEED;
+		if (ballSpeedX > 0) {
+			ballSpeedX += ballMaxSpeedXHalf;
+		} else {
+			ballSpeedX -= ballMaxSpeedXHalf;
+		}
+		var ball = this.ball = new Circle(this.canvas, new Vector2D(ballX, ballY), new Vector2D(ballSpeedX, BALL_SPEED), BALL_RADIUS);
+		ball
+			.setBodyColor(BALL_BODY_COLOR)
+			.setBorderColor(BALL_BORDER_COLOR);
 		
-		ball.dx = ballDirectionX;
-		ball.dy = ballDirectionY;
-
 		/*- Setting ball's movements logic -*/
 		ball.movementsLogic = getBallMovementsLogic(this);
 		
@@ -297,7 +294,10 @@ Breakout.prototype = (function () {
 		/*- Level text */
 		var levelX 		= 5,
 			levelY 		= this.canvas.height - SLIDER_MARGIN_BOTTOM + 20,
-			levelText 	= this.levelText = new Text(this.canvas, levelX, levelY, TEXT_COLOR, TEXT_COLOR);
+			levelText 	= this.levelText = new Text(this.canvas, new Vector2D(levelX, levelY), new Vector2D(0, 0));
+			levelText
+				.setBodyColor(TEXT_COLOR)
+				.setBorderColor(TEXT_COLOR);
 
 		/*- Adding level text to the animation queue -*/
 		this.addBody(levelText);
@@ -305,7 +305,10 @@ Breakout.prototype = (function () {
 		/*- Points text -*/
 		var pointsX = (this.canvas.width - 35) / 2,
 			pointsY = levelY,
-			pointsText = this.pointsText = new Text(this.canvas, pointsX, pointsY, TEXT_COLOR, TEXT_COLOR);
+			pointsText = this.pointsText = new Text(this.canvas, new Vector2D(pointsX, pointsY), new Vector2D(0, 0));
+			pointsText
+				.setBodyColor(TEXT_COLOR)
+				.setBorderColor(TEXT_COLOR);
 			this.pointsText.text = POINTS_TEXT + this.points;
 			
 		/*- Adding points text to the animation queue -*/
