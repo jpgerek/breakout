@@ -14,6 +14,7 @@ Game.prototype = (function () {
 	var CANVAS_DEFAULT_WIDTH 	= 500,
 		CANVAS_DEFAULT_HEIGHT 	= 300;
 	
+	
 	/**
 	 * Handling crossbrowser issues.
 	 */
@@ -158,7 +159,7 @@ Game.prototype = (function () {
 	};
 	
 	/**
-	 * Toogle animation loop.
+	 * Toggle animation loop.
 	 */
 	prototype.toogleLoop = function () {
 		if (this.animationLoopActive) {

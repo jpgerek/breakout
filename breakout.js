@@ -24,14 +24,15 @@ Breakout.prototype = (function () {
 	
 	/*--- Constants ---*/
 	
-	var	BALL_BODY_COLOR 		= "#FF1414",
-		BALL_BORDER_COLOR 		= "#000000",
+	var	CANVAS_BG_COLOR			= "#CCE1FF",
+		BALL_BODY_COLOR 		= "#FF1414",
+		BALL_BORDER_COLOR 		= "#555555",
 		BALL_RADIUS				= 10,
 		BALL_SPEED				= 6,
 		BALL_MAX_X_SPEED		= 4,
 		
-		SLIDER_BODY_COLOR 		= "#6176FF",
-		SLIDER_BORDER_COLOR 	= "#aadd00",
+		SLIDER_BODY_COLOR 		= "#FFA600",
+		SLIDER_BORDER_COLOR 	= "#555555",
 		SLIDER_WIDTH 			= 120,
 		SLIDER_HEIGHT			= 10,
 		SLIDER_SPEED			= 10,
@@ -40,7 +41,7 @@ Breakout.prototype = (function () {
 		SLIDER_FRICTION			= 0.75,
 		
 		BRICKS_BODY_COLOR 		= "#ffff00",
-		BRICKS_BORDER_COLOR		= "#0FF0F0",
+		BRICKS_BORDER_COLOR		= "#555555",
 		BRICKS_ROWS				= 2,
 		BRICKS_PER_ROW			= 5,
 		POINTS_PER_BRICK		= 1,
@@ -48,14 +49,14 @@ Breakout.prototype = (function () {
 		
 		LEVEL_TEXT				= 'Level: ',
 		POINTS_TEXT				= 'Points: ',
-		TEXT_COLOR				= '#777777',
+		TEXT_COLOR				= '#555555',
 		POINTS_PER_LEVEL		= 15,
 		
 		/*- Change ratios -*/
 		BALL_SIZE_EACH_LEVEL	= 0.95,
 		SLIDER_SIZE_EACH_LEVEL 	= 0.95,
-		SLIDER_SPEED_EACH_LEVEL = 1.10,
-		BALL_SPEED_EACH_LEVEL 	= 1.05;
+		SLIDER_SPEED_EACH_LEVEL = 1.08,
+		BALL_SPEED_EACH_LEVEL 	= 1.03;
 	
 	/**
 	 * Ball movements and collisions logic.
@@ -330,6 +331,9 @@ Breakout.prototype = (function () {
 
 		 /*-- Setting up game --*/
 		this.parent.prototype.initialize.apply(this, arguments);
+		
+		/*- Setting canvas background color -*/
+		this.canvas.style.backgroundColor = CANVAS_BG_COLOR;
 		
 		/*--- User interaction keys ---*/
 		
