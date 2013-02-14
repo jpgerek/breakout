@@ -38,7 +38,7 @@ Breakout.prototype = (function () {
 		SLIDER_SPEED			= 10,
 		SLIDER_MARGIN_BOTTOM 	= 25,
 		SLIDER_LATERAL_MARGIN	= 1,
-		SLIDER_FRICTION			= 0.75,
+		SLIDER_FRICTION			= 1.2, // Ratio.
 		
 		BRICKS_BODY_COLOR 		= "#ffff00",
 		BRICKS_BORDER_COLOR		= "#555555",
@@ -52,7 +52,7 @@ Breakout.prototype = (function () {
 		TEXT_COLOR				= '#555555',
 		POINTS_PER_LEVEL		= 15,
 		
-		/*- Change ratios -*/
+		/*- Level change ratios -*/
 		BALL_SIZE_EACH_LEVEL	= 0.95,
 		SLIDER_SIZE_EACH_LEVEL 	= 0.95,
 		SLIDER_SPEED_EACH_LEVEL = 1.08,
@@ -81,7 +81,7 @@ Breakout.prototype = (function () {
 			for (var i in bricksList) {
 				var brick 						= bricksList[i],
 					ballBrickYBottomDistance 	= brick.getTop() - ball.getBottom(),
-					ballBrickYTopDistance 		= ball.getTop() - brick.getTop(),
+					ballBrickYTopDistance 		= ball.getTop() - brick.getBottom(),
 					ballBrickXLeftDistance 		= brick.getLeft() - ball.getRight(),
 					ballBrickXRightDistance 	= ball.getLeft() - brick.getRight();
 				
@@ -118,16 +118,12 @@ Breakout.prototype = (function () {
 				/*- Reverse the movement if it hits the top border -*/
 				ballSpeed.invertY();
 			} else {
-				if (ball.goingDown() && ball.getBottom() >= slider.getTop() && ballPosition.getX() >= slider.getLeft() && ballPosition.getX() <= slider.getRight()) {
+				var ballSliderLeftDistance = slider.getLeft() - ball.getRight(),
+					ballSliderRightDistance = ball.getLeft() - slider.getRight();
+				if (ball.goingDown() && ball.getBottom() >= slider.getTop() && (ballSliderLeftDistance <= 0 && ballSliderRightDistance <= 0)) {
 					/*- Reverse the movement if it hits the top of the slider -*/
 					ballSpeed.invertY();
-					var ballSpeedX;
-					if (slider.goingRight()) {
-						ballSpeedX = ballSpeed.getX() + SLIDER_FRICTION;
-					}
-					if (slider.goingLeft()) {
-						ballSpeedX = ballSpeed.getX() - SLIDER_FRICTION;
-					}
+					var ballSpeedX = ballSpeed.getX() * SLIDER_FRICTION;
 					/*- Ensuring a maximum x speed -*/
 					if (Math.abs(ballSpeedX) > BALL_MAX_X_SPEED) {
 						ballSpeedX = BALL_MAX_X_SPEED;
@@ -142,8 +138,9 @@ Breakout.prototype = (function () {
 				}
 			}
 			
-			/*--- Go to the next level if there aren't more bricks ---*/
-			if (game.bricksList.length === 0 && ball.getTop() > lowestBrickY) {
+			/*--- Go to the next level if there aren't more bricks and make sure the ball is bellow the bricks ---*/
+			var lastBrickBallMargin = 30;
+			if (game.bricksList.length === 0 && ball.getTop() > (lowestBrickY + lastBrickBallMargin)) {
 				nextLevel.call(game);
 			}
 		};
