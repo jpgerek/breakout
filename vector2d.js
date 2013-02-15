@@ -48,9 +48,17 @@ Vector2D.prototype = (function () {
 		return this;
 	};
 	
-	prototype.multiply = function (vector) {
-		this.setX(this.getX() * vector.getX());
-		this.setY(this.getY() * vector.getY());
+	prototype.multiply = function (vectorOrScalar) {
+		var vector, scalar;
+		if (isNaN(vectorOrScalar)) {
+			vector = vectorOrScalar;
+			this.setX(this.getX() * vector.getX());
+			this.setY(this.getY() * vector.getY());
+		} else {
+			scalar = vectorOrScalar;
+			this.setX(this.getX() * scalar);
+			this.setY(this.getY() * scalar);
+		}
 		return this;
 	};
 	
@@ -66,6 +74,10 @@ Vector2D.prototype = (function () {
 	prototype.invertY = function () {
 		this.setY(this.y * -1);
 		return this;
+	};
+	
+	prototype.getCopy = function () {
+		return new Vector2D(this.getX(), this.getY());
 	};
 	
 	return prototype;

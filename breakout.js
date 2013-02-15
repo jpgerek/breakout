@@ -3,14 +3,16 @@
  */
 function Breakout() {
 	this.parent.apply(this, arguments);
-	this.gameOver 		= null;
-	this.currentLevel 	= null;
-	this.points			= null;
-	this.pointsText 	= null;
-	this.levelText 		= null;
-	this.bricksList 	= null;
-	this.ball 			= null;
-	this.slider 		= null;
+	this.gameOver 			= true; // Game over by default.
+	this.currentLevel 		= null;
+	this.points				= null;
+	this.pointsText 		= null;
+	this.levelText 			= null;
+	this.bricksList 		= null;
+	this.ball 				= null;
+	this.slider 			= null;
+	this.sliderSpeedMoving	= null;
+	this.sliderSpeedStop 	= null;
 }
 
 
@@ -27,18 +29,18 @@ Breakout.prototype = (function () {
 	var	CANVAS_BG_COLOR			= "#CCE1FF",
 		BALL_BODY_COLOR 		= "#FF1414",
 		BALL_BORDER_COLOR 		= "#555555",
-		BALL_RADIUS				= 10,
-		BALL_SPEED				= 6,
-		BALL_MAX_X_SPEED		= 4,
+		BALL_RADIUS				= 10, // Pixels.
+		BALL_SPEED				= 5 * 60, // Pixels per second.
+		BALL_MAX_X_SPEED		= 4 * 60, // Pixels per second.
 		
 		SLIDER_BODY_COLOR 		= "#FFA600",
 		SLIDER_BORDER_COLOR 	= "#555555",
-		SLIDER_WIDTH 			= 120,
-		SLIDER_HEIGHT			= 10,
-		SLIDER_SPEED			= 10,
-		SLIDER_MARGIN_BOTTOM 	= 25,
-		SLIDER_LATERAL_MARGIN	= 1,
-		SLIDER_FRICTION			= 1.2, // Ratio.
+		SLIDER_WIDTH 			= 120, // Pixels.
+		SLIDER_HEIGHT			= 10, // Pixels.
+		SLIDER_SPEED			= 10 * 60, // Pixels per second.
+		SLIDER_MARGIN_BOTTOM 	= 25, // Pixels.
+		SLIDER_LATERAL_MARGIN	= 1, // Pixels.
+		SLIDER_FRICTION			= 1.1, // Ratio.
 		
 		BRICKS_BODY_COLOR 		= "#ffff00",
 		BRICKS_BORDER_COLOR		= "#555555",
@@ -56,7 +58,11 @@ Breakout.prototype = (function () {
 		BALL_SIZE_EACH_LEVEL	= 0.95,
 		SLIDER_SIZE_EACH_LEVEL 	= 0.95,
 		SLIDER_SPEED_EACH_LEVEL = 1.08,
-		BALL_SPEED_EACH_LEVEL 	= 1.03;
+		BALL_SPEED_EACH_LEVEL 	= 1.03,
+		
+		HELP_TEXT				= "- Start the game by pressing the space key.\n" +
+								  "- Use left and right arrows to move to the slider to the sides.\n" +
+								  "- You can you pause the game pressing space.";
 	
 	/**
 	 * Ball movements and collisions logic.
@@ -71,11 +77,9 @@ Breakout.prototype = (function () {
 				bricksList 			= game.bricksList,
 				ball 				= this,
 				ballSpeed			= ball.getSpeed(),
-				ballPosition		= ball.getPosition();
+				ballPosition		= ball.getPosition(),
+				displacement;
 
-			/*- Updating balls position adding speed vector -*/
-			ballPosition.add(ball.speed);
-			
 			/*- Checking bricks collisions -*/
 			var newBricksList = [];
 			for (var i in bricksList) {
@@ -88,15 +92,21 @@ Breakout.prototype = (function () {
 				/*- Tracking where is the lowest brick -*/
 				lowestBrickY = Math.max(brick.getBottom(), lowestBrickY);
 					
-				/*- Checking if the ball hits the bottom of a brick when going up -*/
+				/*- Checking if the ball hits the brick -*/
 				if (ballBrickYBottomDistance <= 0 && ballBrickYTopDistance <= 0 && ballBrickXLeftDistance <= 0 && ballBrickXRightDistance <= 0) {
 					game.delBody(brick);
+					/*- Hit the bottom of the brick -*/
 					if (ball.goingUp()) {
 						ballSpeed.setY(Math.abs(ballSpeed.getY()));
+					/*- Hit the left of the brick -*/
 					} else if (ball.goingRight()) {
 						ballSpeed.setX(- 1 * Math.abs(ballSpeed.getX()));
+					/*- Hit the right of the brick -*/
 					} else if (ball.goingLeft()) {
 						ballSpeed.setX(Math.abs(ballSpeed.getX()));
+					/*- Hit the top of a brick -*/
+					} else if (ball.goingDown()) {
+						ballSpeed.setY(-1 * (Math.abs(ballSpeed.getY())));
 					}
 					/*- Increase points after hitting a brick -*/
 					increasePoints.call(game);
@@ -121,18 +131,27 @@ Breakout.prototype = (function () {
 				var ballSliderLeftDistance = slider.getLeft() - ball.getRight(),
 					ballSliderRightDistance = ball.getLeft() - slider.getRight();
 				if (ball.goingDown() && ball.getBottom() >= slider.getTop() && (ballSliderLeftDistance <= 0 && ballSliderRightDistance <= 0)) {
-					/*- Reverse the movement if it hits the top of the slider -*/
+					/*- Making the ball bounce by inverting y speed -*/
 					ballSpeed.invertY();
-					var ballSpeedX = ballSpeed.getX() * SLIDER_FRICTION;
-					/*- Ensuring a maximum x speed -*/
-					if (Math.abs(ballSpeedX) > BALL_MAX_X_SPEED) {
-						ballSpeedX = BALL_MAX_X_SPEED;
-						if (ball.goingLeft()) {
-							ballSpeedX *= -1;
+					/*- If the slider is moving apply friction to the ball -*/
+					if (slider.goingRight() || slider.goingLeft()) {
+						var sliderFriction = SLIDER_FRICTION;
+						if ((ball.goingLeft() && slider.goingRight()) || (ball.goingRight() && slider.goingLeft())) {
+							/*- Break the ball if the slider movement is against the ball -*/
+							sliderFriction = 1 / sliderFriction;
 						}
+						/*- Reverse the movement if it hits the top of the slider -*/
+						var ballSpeedX = ballSpeed.getX() * sliderFriction;
+						/*- Ensuring a maximum x speed -*/
+						if (Math.abs(ballSpeedX) > BALL_MAX_X_SPEED) {
+							ballSpeedX = BALL_MAX_X_SPEED;
+							if (ball.goingLeft()) {
+								ballSpeedX *= -1;
+							}
+						}
+						ballSpeed.setX(ballSpeedX);
 					}
-					ballSpeed.setX(ballSpeedX);
-				} else if (ball.goingDown() && ball.getBottom() >= slider.getBottom()) {
+				} else if (ball.getBottom() >= slider.getBottom()) {
 					/*--- Game over case ---*/
 					gameOver.call(game);
 				}
@@ -143,6 +162,9 @@ Breakout.prototype = (function () {
 			if (game.bricksList.length === 0 && ball.getTop() > (lowestBrickY + lastBrickBallMargin)) {
 				nextLevel.call(game);
 			}
+			/*- Updating balls position adding speed vector -*/
+			displacement = ballSpeed.getCopy().multiply(game.getFrameTimeDelta());
+			ballPosition.add(displacement);
 		};
 	}
 	
@@ -157,31 +179,35 @@ Breakout.prototype = (function () {
 	/**
 	 * Slider movements and collisions logic.
 	 */
-	function sliderMovementsLogic() {
-		var speed = this.getSpeed(),
-			position = this.getPosition();
-			
-		var	speedXAbs = Math.abs(speed.getX()),
-			thereIsMovement = false;
-		/*- Checking slider controls -*/
-		if (!this.moveRight && this.moveLeft) {
-			speed.setX(-1 * speedXAbs);
-			thereIsMovement = true;
-		} 
-		if (!this.moveLeft && this.moveRight) {
-			speed.setX(speedXAbs);
-			thereIsMovement = true;
-		} 
-		if ((position.getX() + this.getWidth() + SLIDER_LATERAL_MARGIN) >= this.getCanvas().width && this.goingRight()) {
-			position.setX(this.getCanvas().width - this.getWidth() - SLIDER_LATERAL_MARGIN);
-		}
-		if ((position.getX() - SLIDER_LATERAL_MARGIN) <= 0 && this.goingLeft()) {
-			position.setX(SLIDER_LATERAL_MARGIN);
-		}
-		if (thereIsMovement) {
-			/*- Updating position -*/
-			position.add(speed);
-		}
+	function getSliderMovementsLogic(game) {
+		return function () {
+			var speed = this.getSpeed(),
+				position = this.getPosition(),
+				displacement;
+				
+			var	speedXAbs = Math.abs(speed.getX()),
+				thereIsMovement = false;
+			/*- Checking slider controls -*/
+			if (!this.goingRight() && this.goingLeft()) {
+				speed.setX(-1 * speedXAbs);
+				thereIsMovement = true;
+			} 
+			if (!this.goingLeft() && this.goingRight()) {
+				speed.setX(speedXAbs);
+				thereIsMovement = true;
+			} 
+			if ((position.getX() + this.getWidth() + SLIDER_LATERAL_MARGIN) >= this.getCanvas().width) {
+				position.setX(this.getCanvas().width - this.getWidth() - SLIDER_LATERAL_MARGIN);
+			}
+			if ((position.getX() - SLIDER_LATERAL_MARGIN) <= 0) {
+				position.setX(SLIDER_LATERAL_MARGIN);
+			}
+			if (thereIsMovement) {
+				/*- Updating position -*/
+				displacement = speed.getCopy().multiply(game.getFrameTimeDelta());
+				position.add(displacement);
+			}
+		};
 	}
 	
 	
@@ -191,9 +217,8 @@ Breakout.prototype = (function () {
 	function gameOver() {
 		this.gameOver = true;
 		this.stopLoop();
-		if (confirm('Game over! Do you want to start again?')) {
-			start.call(this);
-		} 	
+		/*- Print help -*/
+		help.call(this);
 	}
 	
 	/**
@@ -207,7 +232,7 @@ Breakout.prototype = (function () {
 			brickWidth 		= (this.canvas.width - (bricksMargin * (bricksPerRow+1))) / bricksPerRow,
 			brickHeight 	= (this.canvas.height - (bricksMargin * (bricksRows+1))) / (4 * bricksPerRow),
 			vector2DZero 		= new Vector2D(0, 0);
-		for (var i = 0; i < bricksRows; i++ ) {
+		for (var i = 0; i < bricksRows; i++) {
 			for (var j = 0; j < bricksPerRow; j++) {
 				var brickX 	= bricksMargin + ((bricksMargin + brickWidth) * j),
 					brickY 	= bricksMargin + ((bricksMargin + brickHeight) * i),
@@ -252,20 +277,23 @@ Breakout.prototype = (function () {
 		
 		/*--- Creating the slider ---*/
 		
+		/*- Saving the vector speed of the slider when is stop -*/
+		this.sliderSpeedStop = new Vector2D(0, 0);
+		
 		var sliderX = (this.canvas.width - SLIDER_WIDTH) / 2,
 			sliderY = this.canvas.height - SLIDER_HEIGHT - SLIDER_MARGIN_BOTTOM,
-			slider = this.slider = new Rectangle(this.canvas, new Vector2D(sliderX, sliderY), new Vector2D(SLIDER_SPEED, 0), SLIDER_WIDTH, SLIDER_HEIGHT);
+			slider = this.slider = new Rectangle(this.canvas, new Vector2D(sliderX, sliderY), this.sliderSpeedStop, SLIDER_WIDTH, SLIDER_HEIGHT);
 			slider
 				.setBodyColor(SLIDER_BODY_COLOR)
 				.setBorderColor(SLIDER_BORDER_COLOR);
+		/*- Setting slider initial speed, this speed will be set only when certain keys are pressed -*/
+		this.sliderSpeedMoving = new Vector2D(SLIDER_SPEED, 0);
 		
 		/*- Adding the slider to the animation queue -*/
 		this.addBody(slider);
 		
 		/*- Setting slider's movements logic -*/
-		slider.movementsLogic = sliderMovementsLogic;
-		/*- Flags to control the movement of the slider -*/
-		slider.moveLeft = slider.moveRight = false;
+		slider.movementsLogic = getSliderMovementsLogic(this);
 		
 		/*--- Creating ball ---*/
 		
@@ -301,9 +329,9 @@ Breakout.prototype = (function () {
 		this.addBody(levelText);
 		
 		/*- Points text -*/
-		var pointsX = (this.canvas.width - 35) / 2,
-			pointsY = levelY,
-			pointsText = this.pointsText = new Text(this.canvas, new Vector2D(pointsX, pointsY), new Vector2D(0, 0));
+		var pointsX 	= (this.canvas.width - 35) / 2,
+			pointsY 	= levelY,
+			pointsText 	= this.pointsText = new Text(this.canvas, new Vector2D(pointsX, pointsY), new Vector2D(0, 0));
 			pointsText
 				.setBodyColor(TEXT_COLOR)
 				.setBorderColor(TEXT_COLOR);
@@ -320,8 +348,20 @@ Breakout.prototype = (function () {
 	}
 	
 	/**
+	 * Prints the instructions.
+	 */
+	function help() {
+		var position 	= new Vector2D(0, 0),
+			speed		= new Vector2D(0, 0),
+			helpText 	= new Text(this.canvas, position, speed, TEXT_COLOR, TEXT_COLOR, HELP_TEXT);
+		position
+				.setX((this.canvas.width - helpText.getWidth()) / 4) // I don't know why it doesn't get centered dividing by 2.
+				.setY((this.canvas.height - helpText.getHeight()) / 2);
+		helpText.draw();
+	}
+	
+	/**
 	 * Game initializer.
-	 * 
 	 */
 	 prototype.initialize = function (containerId, widthParam, heightParam) {
 		 var game = this;
@@ -335,21 +375,38 @@ Breakout.prototype = (function () {
 		/*--- User interaction keys ---*/
 		
 		document.addEventListener('keydown', function (event) {
+			var speedXAbs;
 			switch (event.which) {
 				/*-- Stopping/starting the game when pressing space --*/
 				case 32:
-					if (!game.gameOver) {
+					/*- Inactive keys if the game is over -*/
+					if (game.gameOver) {
+						start.call(game);
+					} else {
 						game.toogleLoop();
 					}
 				break;
-				/*-- Binding left and right keys to move the slider and --*/
+				/*-- Left key --*/
 				case 37:
+					/*- Inactive keys if the game is over -*/
+					if (game.gameOver) {
+						return;
+					}
 					/*- Moving to the left -*/
-					game.slider.moveLeft = true;
+					game.slider.setSpeed(game.sliderSpeedMoving);
+					speedXAbs = Math.abs(game.sliderSpeedMoving.getX());
+					game.sliderSpeedMoving.setX(-1 * speedXAbs);
 				break;
+				/*-- Right key --*/
 				case 39:
+					/*- Inactive keys if the game is over -*/
+					if (game.gameOver) {
+						return;
+					}
 					/*- Moving to the right -*/
-					game.slider.moveRight = true;
+					game.slider.setSpeed(game.sliderSpeedMoving);
+					speedXAbs = Math.abs(game.sliderSpeedMoving.getX());
+					game.sliderSpeedMoving.setX(speedXAbs);
 				break;
 			}
 		}, false);
@@ -357,19 +414,21 @@ Breakout.prototype = (function () {
 		/*- Stopping the slider when releasing the left and right keys -*/
 		document.addEventListener('keyup', function (event) {
 			switch (event.which) {
+				/*-- Left and right key --*/
 				case 37:
-					/*- Stop sliding to the left -*/
-					game.slider.moveLeft = false;
-				break;
 				case 39:
-					/*- Stop sliding to the right -*/
-					game.slider.moveRight = false;
+					/*- Inactive keys if the game is over -*/
+					if (game.gameOver) {
+						return;
+					}
+					/*- Stop sliding to the left or the right -*/
+					game.slider.setSpeed(game.sliderSpeedStop);
 				break;
 			}
 		}, false);
-
-		/*- Starting the game -*/
-		start.call(this);
+		
+		/*- Print help -*/
+		help.call(game);
 	};
 	
 	return prototype;

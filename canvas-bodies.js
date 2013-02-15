@@ -222,8 +222,17 @@ Rectangle.prototype = (function () {
 function Text(canvas, vectorPosition, vectorSpeed, bodyColor, borderColor, text) {
 	/*- Calling parent constructor */
 	this.parent.apply(this, arguments);
-	this.text = text || '';
-	this.font = "12px helvetica";
+	this.textLines 		= [];
+	this.width 			= null;
+	this.height 		= null;
+	this.lineSpacing 	= 4;
+	
+	this.setFontSize(16);
+	this.setFontType("helvetica");
+	
+	bodyColor && this.setBodyColor(bodyColor);
+	borderColor && this.setBorderColor(borderColor);
+	text && this.setText(text);
 }
 
 
@@ -237,16 +246,97 @@ Text.prototype = (function () {
 	/*- Inheriting from Body -*/
 	var prototype = extend(Text, Body);
 	
+	function updateFont() {
+		this.font = this.fontSize + "px " + this.fontType;
+	}
+	
+	/**
+	 * Hack to compute the size and height of the text.
+	 * It has to be called each time the font or text changes.
+	 */
+	function computeSize() {
+		/*
+		 * If there is more than one line we have to look for the longest one to know what line should we check
+		 * to get the text width.
+		 */
+		var longestLineWidth = 0;
+		if (this.textLines.length > 1) {
+			for (var i in this.textLines) {
+				var lineWidth = this.context.measureText(this.textLines[i]).width;
+				if (lineWidth > longestLineWidth) {
+					longestLineWidth = lineWidth;
+				}
+			}
+		}
+		this.width = longestLineWidth;
+		this.height = this.textLines.length * (this.fontSize + this.lineSpacing - 1);
+	}
+	
 	prototype.draw = function () {
 		var ctx = this.context;
 		ctx.fillStyle = this.bodyColor;
 		ctx.strokeStyle = this.borderColor;
 		ctx.beginPath();
 		ctx.font = this.font;
-		ctx.fillText(this.text, this.getPosition().getX(), this.getPosition().getY());
+		for (var i in this.textLines) {
+			var line = this.textLines[i];
+			ctx.fillText(line, this.getPosition().getX(), this.getPosition().getY() + (i * (this.fontSize + this.lineSpacing)));
+		}
 		ctx.closePath();
 		ctx.fill();
 		ctx.stroke();
+		return this;
+	};
+	
+	prototype.setText = function (text) {
+		this.textLines = text.split(/\r?\n/);
+		/*- Reseting text size properties -*/
+		this.width = this.height = null;
+		return this;
+	};
+	
+	prototype.getText = function () {
+		return this.text;
+	};
+	
+	prototype.getWidth = function () {
+		if (this.width === null) {
+			/*- Lazy computing of the width and height -*/
+			computeSize.call(this);
+		}
+		return this.width;
+	};
+	
+	prototype.getHeight = function () {
+		if (this.height === null) {
+			/*- Lazy computing of the width and height -*/
+			computeSize.call(this);
+		}
+		return this.height;
+	};
+	
+	prototype.setFontSize = function (num) {
+		this.fontSize = num;
+		/*- Reseting text size properties -*/
+		this.width = this.height = null;
+		updateFont.call(this);
+		return this;
+	};
+	
+	prototype.getFontSize = function () {
+		return this.fontSize;
+	};
+	
+	prototype.setFontType = function (fontType) {
+		this.fontType = fontType;
+		/*- Reseting text size properties -*/
+		this.width = this.height = null;
+		updateFont.call(this);
+		return this;
+	};
+	
+	prototype.getFontType = function () {
+		return this.fontType;
 	};
 	
 	return prototype;
