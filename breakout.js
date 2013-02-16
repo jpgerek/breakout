@@ -40,7 +40,7 @@ Breakout.prototype = (function () {
 		SLIDER_SPEED			= 10 * 60, // Pixels per second.
 		SLIDER_MARGIN_BOTTOM 	= 25, // Pixels.
 		SLIDER_LATERAL_MARGIN	= 1, // Pixels.
-		SLIDER_FRICTION			= 1.1, // Ratio.
+		SLIDER_FRICTION			= 1.15, // Ratio.
 		
 		BRICKS_BODY_COLOR 		= "#ffff00",
 		BRICKS_BORDER_COLOR		= "#555555",
@@ -173,7 +173,7 @@ Breakout.prototype = (function () {
 	 */
 	function increasePoints() {
 		this.points += POINTS_PER_BRICK;
-		this.pointsText.text = POINTS_TEXT + this.points;
+		this.pointsText.setText(POINTS_TEXT + this.points);
 	}
 	
 	/**
@@ -261,7 +261,7 @@ Breakout.prototype = (function () {
 		}
 		this.currentLevel++;
 		/*- Updating level banner text -*/
-		this.levelText.text = LEVEL_TEXT + this.currentLevel;
+		this.levelText.setText(LEVEL_TEXT + this.currentLevel);
 	}
 	
 	/**
@@ -335,7 +335,7 @@ Breakout.prototype = (function () {
 			pointsText
 				.setBodyColor(TEXT_COLOR)
 				.setBorderColor(TEXT_COLOR);
-			this.pointsText.text = POINTS_TEXT + this.points;
+			this.pointsText.setText(POINTS_TEXT + this.points);
 			
 		/*- Adding points text to the animation queue -*/
 		this.addBody(pointsText);
